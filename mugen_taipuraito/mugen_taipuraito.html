@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mugen_taipuraito</title>
+    <link rel="stylesheet" href="mugen_taipuaito.css"> <!-- 外部CSSファイルをリンク -->
+</head>
+<body>
+    <div id="container"></div>
+
+    <!-- ツールボックスラッパー -->
+    <div id="toolboxWrapper">
+        <!-- 設定ツールボックス -->
+        <div id="toolbox">
+            <h3>Set</h3>
+            <label for="fontSize">Size:</label>
+            <input type="range" id="fontSize" min="8" max="2000" value="24">
+            <br>
+            <label for="speedControl">Speed:</label>
+            <input type="range" id="speedControl" min="1" max="10" value="2">
+            <br>
+            <label for="fontColor">Font Color:</label>
+            <input type="color" id="fontColor" value="#000000">
+            <br>
+            <label for="bgColor">Bg Color:</label>
+            <input type="color" id="bgColor" value="#f0f0f0">
+        </div>
+
+        <!-- ランダムツールボックス -->
+        <div id="randomToolbox">
+            <h3>Dice</h3>
+            <div class="checkbox-group">
+                <label for="randomFontSize">Size:</label>
+                <input type="checkbox" id="randomFontSize">
+            </div>
+            <div class="checkbox-group">
+                <label for="randomSpeed">Speed:</label>
+                <input type="checkbox" id="randomSpeed">
+            </div>
+            <div class="checkbox-group">
+                <label for="randomFontColor">Font Color:</label>
+                <input type="checkbox" id="randomFontColor">
+            </div>
+            <div class="checkbox-group">
+                <label for="randomBgColor">Bg Color:</label>
+                <input type="checkbox" id="randomBgColor">
+            </div>
+            <div class="checkbox-group">
+                <label for="randomHeight">Height:</label>
+                <input type="checkbox" id="randomHeight">
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // ランダムツールボックス内のテキストをすべて白色に変更
+        const randomToolboxText = document.querySelectorAll('#randomToolbox h3, #randomToolbox label');
+        randomToolboxText.forEach(text => {
+         text.style.color = '#ffffff';  // 白色に設定
+        });
+
+
+        let container = document.getElementById('container');
+        let animations = [];
+        let paused = false;
+        let currentFontSize = 24; // 初期サイズ
+        let currentFontColor = '#000000'; // 初期色
+        let currentBgColor = '#f0f0f0'; // 初期背景色
+        let speed = 1; // 初期速度
+        let currentTopPosition = '50%'; // 初期位置（縦方向）
+        let movingUp = false; // 上矢印が押されているかどうか
+        let movingDown = false; // 下矢印が押されているかどうか
+
+        // ランダムモードがオンかどうか
+        let randomMode = false;
+
+        // 背景色の変更
+        document.getElementById('bgColor').addEventListener('input', (event) => {
+            currentBgColor = event.target.value;
+            container.style.backgroundColor = currentBgColor;
+        });
+
+        // ランダムモードの設定を変更
+        function updateRandomElements() {
+            let randomFontSize = currentFontSize;
+            let randomSpeedValue = speed;
+            let randomFontColorValue = currentFontColor;
+            let randomTopPositionValue = currentTopPosition;
+
+            if (document.getElementById('randomFontSize').checked) {
+                randomFontSize = Math.floor(Math.random() * (1000 - 8 + 1)) + 8;
+                document.getElementById('fontSize').value = randomFontSize; // スライダーを更新
+            }
+            if (document.getElementById('randomSpeed').checked) {
+                randomSpeedValue = Math.floor(Math.random() * (10 - 1 + 1)) + 1;
+                document.getElementById('speedControl').value = randomSpeedValue; // スライダーを更新
+            }
+            if (document.getElementById('randomFontColor').checked) {
+                randomFontColorValue = '#' + Math.floor(Math.random() * 16777215).toString(16);
+                document.getElementById('fontColor').value = randomFontColorValue; // 色選択を更新
+            }
+            if (document.getElementById('randomBgColor').checked) {
+                randomBgColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+                document.getElementById('bgColor').value = randomBgColor; // 背景色選択を更新
+                container.style.backgroundColor = randomBgColor;
+            }
+            if (document.getElementById('randomHeight').checked) {
+                randomTopPositionValue = Math.floor(Math.random() * (90 - 0 + 1)) + 20 + '%';
+            }
+
+            return { randomFontSize, randomSpeedValue, randomFontColorValue, randomTopPositionValue };
+        }
+
+        document.addEventListener('keydown', (event) => {
+    // ここを削除して、スペースキーでの一時停止機能を無効にする
+    if (event.key.length === 1 && !paused) {
+        // 文字入力キー
+        const { randomFontSize, randomSpeedValue, randomFontColorValue, randomTopPositionValue } = updateRandomElements(); // ランダム設定を更新
+                let textElement = document.createElement('div');
+                textElement.className = 'text';
+                textElement.textContent = event.key;
+                textElement.style.left = container.offsetWidth + 'px';
+                textElement.style.fontSize = randomFontSize + 'px';
+                textElement.style.color = randomFontColorValue;
+                textElement.style.top = randomTopPositionValue; // ランダムな高さ
+                container.appendChild(textElement);
+
+                // 新しく打ち込まれた文字に対してアニメーションを適用
+                function animate() {
+                    if (paused) return;
+
+                    let currentLeft = parseFloat(window.getComputedStyle(textElement).left);
+                    if (currentLeft + textElement.offsetWidth < 0) {
+                        textElement.remove();
+                        animations = animations.filter(item => item.element !== textElement);
+                    } else {
+                        textElement.style.left = currentLeft - randomSpeedValue + 'px'; // 速度調整
+                        requestAnimationFrame(animate);
+                    }
+                }
+
+                animations.push({ element: textElement, animate });
+                requestAnimationFrame(animate);
+            }
+
+            // 上矢印キーが押されている場合
+            if (event.key === 'ArrowUp' && !paused) {
+                movingUp = true;
+            }
+
+            // 下矢印キーが押されている場合
+            if (event.key === 'ArrowDown' && !paused) {
+                movingDown = true;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            // 上矢印キーが離された場合
+            if (event.key === 'ArrowUp') {
+                movingUp = false;
+            }
+
+            // 下矢印キーが離された場合
+            if (event.key === 'ArrowDown') {
+                movingDown = false;
+            }
+        });
+
+        // 定期的に位置を更新
+        function updatePosition() {
+            if (movingUp && !paused) {
+                currentTopPosition = parseInt(currentTopPosition) - 2 + '%'; // 上に移動
+                updateTextPosition();
+            } 
+            if (movingDown && !paused) {
+                currentTopPosition = parseInt(currentTopPosition) + 2 + '%'; // 下に移動
+                updateTextPosition();
+            }
+        }
+
+        setInterval(updatePosition, 100); // 100msごとに位置を更新
+
+        // ツールボックスの設定変更イベント
+        document.getElementById('fontSize').addEventListener('input', (event) => {
+            currentFontSize = event.target.value;
+        });
+
+        document.getElementById('fontColor').addEventListener('input', (event) => {
+            currentFontColor = event.target.value;
+        });
+
+        // 速度調整スライダーの設定
+        document.getElementById('speedControl').addEventListener('input', (event) => {
+            speed = parseInt(event.target.value);
+        });
+
+        // ランダムモードの設定変更イベント
+        document.getElementById('randomFontSize').addEventListener('change', (event) => {
+            randomMode = event.target.checked;
+        });
+
+        document.getElementById('randomSpeed').addEventListener('change', (event) => {
+            randomMode = event.target.checked;
+        });
+
+        document.getElementById('randomFontColor').addEventListener('change', (event) => {
+            randomMode = event.target.checked;
+        });
+
+        document.getElementById('randomBgColor').addEventListener('change', (event) => {
+            randomMode = event.target.checked;
+        });
+
+        document.getElementById('randomHeight').addEventListener('change', (event) => {
+            randomMode = event.target.checked;
+        });
+
+        // ツールバーの見え隠れ
+        const toolbox = document.getElementById('toolbox');
+        const randomToolbox = document.getElementById('randomToolbox');
+        let toolboxVisible = false;
+
+        document.addEventListener('mousemove', (event) => {
+            // マウスが画面上部に近づいた場合
+            if (event.clientY <= 120 && !toolboxVisible) {
+                toolbox.style.top = '0'; // ツールバーを表示
+                randomToolbox.style.top = '0'; // ランダムツールボックスを表示
+                toolboxVisible = true;
+            } 
+            // マウスがツールバーから離れた場合
+            else if (event.clientY > 300 && toolboxVisible) {
+                toolbox.style.top = '-400px'; // ツールバーを非表示
+                randomToolbox.style.top = '-400px'; // ランダムツールボックスを非表示
+                toolboxVisible = false;
+            }
+        });
+
+        // 効果音の初期化
+const soundEffect = new Audio('book.mp3');
+
+// 再生中かどうかを追跡するフラグ
+let isPlaying = false;
+
+// キー入力イベントで効果音を鳴らす
+document.addEventListener('keydown', (event) => {
+    if (event.key.length === 1 && !paused) { // 文字入力キー
+        if (!isPlaying) { // 再生中でない場合のみ再生
+            isPlaying = true;
+            soundEffect.currentTime = 0; // 再生位置をリセット
+            soundEffect.play().then(() => {
+                // 再生が完了したらフラグをリセット
+                isPlaying = false;
+            }).catch((error) => {
+                console.error('音声の再生に失敗しました:', error);
+                isPlaying = false; // エラーが発生した場合もフラグをリセット
+            });
+        }
+    }
+});
+
+
+// ページが読み込まれたときにツールボックスを非表示にする
+window.addEventListener('load', () => {
+    toolbox.style.top = '-400px';
+    randomToolbox.style.top = '-400px';
+});
+
+    </script>
+</body>
+</html>
